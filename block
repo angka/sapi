@@ -24,24 +24,31 @@ ff02::3 ip6-allhosts
 #=====================================
 # Title: block tambahan
 
-0.0.0.0 https://ad-assets.futurecdn.net
-0.0.0.0 https://g66top.me
-0.0.0.0 https://tinig22.com
-0.0.0.0 https://slotjanji.com
-0.0.0.0 https://cutt.ly
-0.0.0.0 https://tokyo77-amp.com
-0.0.0.0 https://gacortokyo.com
-0.0.0.0 https://joiboy.ink
-0.0.0.0 https://royal22.vip
-0.0.0.0 https://viplinkzeus4d.com
-0.0.0.0 https://klik.gg
-0.0.0.0 https://cek.to
-0.0.0.0 https://gacor.vin
-0.0.0.0 https://klik.top
-0.0.0.0 https://tapme.ink
-0.0.0.0 https://server-x7.xyz
-0.0.0.0 https://tinyurl.com
+0.0.0.0 ad-assets.futurecdn.net
+0.0.0.0 g66top.me
+0.0.0.0 tinig22.com
+0.0.0.0 slotjanji.com
+0.0.0.0 cutt.ly
+0.0.0.0 tokyo77-amp.com
+0.0.0.0 gacortokyo.com
+0.0.0.0 joiboy.ink
+0.0.0.0 royal22.vip
+0.0.0.0 viplinkzeus4d.com
+0.0.0.0 klik.gg
+0.0.0.0 cek.to
+0.0.0.0 gacor.vin
+0.0.0.0 klik.top
+0.0.0.0 tapme.ink
+0.0.0.0 server-x7.xyz
+0.0.0.0 tinyurl.com
 0.0.0.0 blogger.googleusercontent.com
+0.0.0.0 cdn.livechat-files.com
+0.0.0.0 accounts.livechatinc.com
+0.0.0.0 e2c85.gcp.gvt2.com
+0.0.0.0 s1.kwai.net
+0.0.0.0 jp-api.namesvr.dev
+0.0.0.0 ik.imagekit.io
+0.0.0.0 tokyo77setia.ink
 
 # End of list
 # blacklist
