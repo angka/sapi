@@ -1,0 +1,50 @@
+# Title: block tambahan
+# ===============================================================
+
+127.0.0.1 localhost
+127.0.0.1 localhost.localdomain
+127.0.0.1 local
+255.255.255.255 broadcasthost
+::1 localhost
+::1 ip6-localhost
+::1 ip6-loopback
+fe80::1%lo0 localhost
+ff00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+0.0.0.0 0.0.0.0
+
+# Custom host records are listed here.
+
+# End of custom host records.
+# Start 
+
+#=====================================
+# Title: block tambahan
+
+0.0.0.0 ad-assets.futurecdn.net
+0.0.0.0 g66top.me
+0.0.0.0 tinig22.com
+0.0.0.0 slotjanji.com
+0.0.0.0 cutt.ly
+0.0.0.0 tokyo77-amp.com
+0.0.0.0 gacortokyo.com
+0.0.0.0 joiboy.ink
+0.0.0.0 royal22.vip
+0.0.0.0 viplinkzeus4d.com
+0.0.0.0 klik.gg
+0.0.0.0 cek.to
+0.0.0.0 gacor.vin
+0.0.0.0 klik.top
+0.0.0.0 tapme.ink
+0.0.0.0 server-x7.xyz
+0.0.0.0 tinyurl.com
+
+# End of list
+# blacklist
+
+
+
+
