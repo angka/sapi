@@ -41,6 +41,7 @@ ff02::3 ip6-allhosts
 0.0.0.0 https://tapme.ink
 0.0.0.0 https://server-x7.xyz
 0.0.0.0 https://tinyurl.com
+0.0.0.0 blogger.googleusercontent.com
 
 # End of list
 # blacklist
