@@ -12,6 +12,11 @@ echo "Dir: $APP_DIR"
 echo "=== System update ==="
 sudo apt update && sudo apt upgrade -y
 
+echo "=== Allow port 3000 and 631 ==="
+sudo ufw allow 3000
+sudo ufw allow 631
+sudo ufw reload
+
 echo "=== Install CUPS + drivers ==="
 sudo apt install -y \
   cups \
