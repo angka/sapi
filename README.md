@@ -11,3 +11,7 @@ this app cannot print docx file, we recommend print pdf files. uploaded file wil
 #installation
 
 curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/webprint.sh | sudo bash
+
+
+#instalasi proyek share op
+curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/shareo.sh | sudo bash
