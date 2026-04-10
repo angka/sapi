@@ -14,4 +14,4 @@ curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/webpri
 
 
 #instalasi proyek share op
-curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/shareo.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/install.sh | bash
