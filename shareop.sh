@@ -21,6 +21,9 @@ err()   { echo -e "${RED}[ERR]${NC}   $1"; exit 1; }
 info "ShareOp — Auto Installer"
 echo ""
 
+# --- set local time ---------------------------------------------------------
+sudo timedatectl set-timezone Asia/Jakarta
+
 # ── Detect ─────────────────────────────────────────────────────────────────
 SUDO_USER="${SUDO_USER:-$(who am i | awk '{print $1}')}"
 HOME_DIR=$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6)
