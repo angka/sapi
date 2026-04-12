@@ -27,7 +27,7 @@ HOME_DIR=$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6)
 [[ -z "$HOME_DIR" ]] && HOME_DIR="/home/$SUDO_USER"
 
 GIT_REPO="https://github.com/angka/shareop.git"
-APP_DIR="/opt/shareop"
+APP_DIR="/home/$SUDO_USER/shareop"
 SERVICE_NAME="shareop"
 PORT=3000
 
@@ -73,20 +73,20 @@ ufw --force enable 2>/dev/null || true
 ufw status numbered | grep -q "active" && ok "UFW firewall active" || warn "UFW enable skipped"
 systemctl is-active --quiet ufw 2>/dev/null && ok "UFW running" || true
 
-# ── 5. System user ──────────────────────────────────────────────────────────
-info "Creating system user 'shareop'..."
-id shareop &>/dev/null || useradd -r -s /bin/false -d "$APP_DIR" -m shareop
-ok "User 'shareop' ready"
+# ── 5. Ensure app user exists ────────────────────────────────────────────────
+info "Ensuring user '$SUDO_USER' exists..."
+id "$SUDO_USER" &>/dev/null || useradd -r -s /bin/bash -d "$HOME_DIR" -m "$SUDO_USER"
+ok "User '$SUDO_USER' ready"
 
 # ── 6. Clone repo ───────────────────────────────────────────────────────────
 info "Cloning repository..."
 if [[ -d "$APP_DIR/.git" ]]; then
   info "Repo exists — pulling latest..."
-  sudo -u shareop git -C "$APP_DIR" pull origin main 2>/dev/null || \
-    sudo -u shareop git -C "$APP_DIR" pull
+  sudo -u "$SUDO_USER" git -C "$APP_DIR" pull origin main 2>/dev/null || \
+    sudo -u "$SUDO_USER" git -C "$APP_DIR" pull
 else
   rm -rf "$APP_DIR"
-  sudo -u shareop git clone "$GIT_REPO" "$APP_DIR"
+  sudo -u "$SUDO_USER" git clone "$GIT_REPO" "$APP_DIR"
 fi
 ok "Repository at $APP_DIR"
 
@@ -103,8 +103,11 @@ ok "App code at $CODE_DIR"
 # ── 7. Install dependencies ─────────────────────────────────────────────────
 info "Installing Node.js dependencies..."
 cd "$CODE_DIR"
-npm install --omit=dev --silent 2>&1 | tail -2
+sudo -u "$SUDO_USER" npm install --omit=dev --silent 2>&1 | tail -2
 ok "Dependencies installed"
+
+# Ensure correct ownership
+chown -R "$SUDO_USER:$SUDO_USER" "$APP_DIR"
 
 # ── 8. .env file ────────────────────────────────────────────────────────────
 ENV_FILE="$CODE_DIR/.env"
@@ -121,7 +124,7 @@ TELEGRAM_CHAT_ID=YOUR_CHAT_ID_HERE
 # ── Server ───────────────────────────────────────────────────
 PORT=3000
 ENVEOF
-  chown shareop:shareop "$ENV_FILE"
+  chown "$SUDO_USER:$SUDO_USER" "$ENV_FILE"
   chmod 600 "$ENV_FILE"
   ok ".env created — edit it: sudo nano $ENV_FILE"
 else
@@ -137,8 +140,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=shareop
-Group=shareop
+User=$SUDO_USER
+Group=$SUDO_USER
 WorkingDirectory=$CODE_DIR
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
