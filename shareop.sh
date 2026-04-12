@@ -106,8 +106,9 @@ cd "$CODE_DIR"
 sudo -u "$SUDO_USER" npm install --omit=dev --silent 2>&1 | tail -2
 ok "Dependencies installed"
 
-# Ensure correct ownership
+# Ensure correct ownership (before service starts)
 chown -R "$SUDO_USER:$SUDO_USER" "$APP_DIR"
+ok "Ownership set to $SUDO_USER"
 
 # ── 8. .env file ────────────────────────────────────────────────────────────
 ENV_FILE="$CODE_DIR/.env"
@@ -153,7 +154,10 @@ Environment=NODE_ENV=production
 # Security
 NoNewPrivileges=true
 ProtectSystem=strict
-ProtectHome=true
+ProtectHome=false
+ProtectTmp=no
+ProtectKernelTunables=yes
+PrivateTmp=true
 ReadWritePaths=$CODE_DIR
 
 [Install]
