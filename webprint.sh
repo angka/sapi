@@ -152,10 +152,12 @@ const multer   = require("multer");
 const { exec } = require("child_process");
 const fs       = require("fs");
 const path     = require("path");
-const Database = require("better-sqlite3");
+const sqlite3 = require("sqlite3").verbose();
 
 // ── Database ────────────────────────────────────────────────────────────────
-const db = new Database("webprint.db");
+const db = new sqlite3.Database("webprint.db", (err) => {
+  if (err) { console.error("Failed to open database:", err); process.exit(1); }
+});
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS jobs (
@@ -169,6 +171,17 @@ db.exec(`
     created_at    INTEGER NOT NULL
   )
 `);
+
+// ── Promisified DB helpers ──────────────────────────────────────────────────
+const dbRun = (sql, ...params) => new Promise((res, rej) =>
+  db.run(sql, params, function(err) { err ? rej(err) : res(this); })
+);
+const dbGet = (sql, ...params) => new Promise((res, rej) =>
+  db.get(sql, params, (err, row) => { err ? rej(err) : res(row); })
+);
+const dbAll = (sql, ...params) => new Promise((res, rej) =>
+  db.all(sql, params, (err, rows) => { err ? rej(err) : res(rows); })
+);
 
 // ── Express ─────────────────────────────────────────────────────────────────
 const app = express();
@@ -187,79 +200,93 @@ const upload = multer({
   }
 });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const getJob    = db.prepare("SELECT * FROM jobs WHERE id = ?");
-const getAllJobs = db.prepare("SELECT * FROM jobs ORDER BY created_at DESC");
-
 // ── POST /upload ─────────────────────────────────────────────────────────────
-app.post("/upload", upload.single("file"), (req, res) => {
+app.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-  const ins = db.prepare(
-    "INSERT INTO jobs (original_name, file_path, status, created_at) VALUES (?, ?, 'pending', ?)"
-  );
-  const result = ins.run(req.file.originalname, req.file.path, Date.now());
-  const job    = getJob.get(result.lastInsertRowid);
-  res.status(201).json(job);
+  try {
+    const lastId = await dbRun(
+      "INSERT INTO jobs (original_name, file_path, status, created_at) VALUES (?, ?, 'pending', ?)",
+      req.file.originalname, req.file.path, Date.now()
+    );
+    const job = await dbGet("SELECT * FROM jobs WHERE id = ?", lastId.lastID);
+    res.status(201).json(job);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── GET /queue ────────────────────────────────────────────────────────────────
-app.get("/queue", (_req, res) => {
-  res.json(getAllJobs.all());
+app.get("/queue", async (_req, res) => {
+  try {
+    const jobs = await dbAll("SELECT * FROM jobs ORDER BY created_at DESC");
+    res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── POST /print/:id ───────────────────────────────────────────────────────────
-app.post("/print/:id", (req, res) => {
-  const job = getJob.get(req.params.id);
-  if (!job)                                      return res.status(404).json({ error: "Job not found" });
-  if (!job.file_path || !fs.existsSync(job.file_path))
-                                                 return res.status(410).json({ error: "File no longer available" });
-  if (job.status === "printing")                 return res.status(409).json({ error: "Already printing" });
+app.post("/print/:id", async (req, res) => {
+  try {
+    const job = await dbGet("SELECT * FROM jobs WHERE id = ?", req.params.id);
+    if (!job)                                   return res.status(404).json({ error: "Job not found" });
+    if (!job.file_path || !fs.existsSync(job.file_path))
+                                                return res.status(410).json({ error: "File no longer available" });
+    if (job.status === "printing")              return res.status(409).json({ error: "Already printing" });
 
-  const printer = (req.body.printer || "").trim();
-  const copies  = parseInt(req.body.copies, 10) || 1;
-  const pages   = (req.body.pages  || "").trim();
+    const printer = (req.body.printer || "").trim();
+    const copies  = parseInt(req.body.copies, 10) || 1;
+    const pages   = (req.body.pages  || "").trim();
 
-  const flags = [
-    "-o fit-to-page",
-    printer  ? `-d "${printer}"`      : "",
-    copies   ? `-n ${copies}`         : "",
-    pages    ? `-P "${pages}"`        : ""
-  ].filter(Boolean).join(" ");
+    const flags = [
+      "-o fit-to-page",
+      printer  ? `-d "${printer}"`   : "",
+      copies   ? `-n ${copies}`      : "",
+      pages    ? `-P "${pages}"`     : ""
+    ].filter(Boolean).join(" ");
 
-  db.prepare("UPDATE jobs SET status='printing', printer=?, copies=?, pages=? WHERE id=?")
-    .run(printer || null, copies, pages || null, job.id);
+    await dbRun(
+      "UPDATE jobs SET status='printing', printer=?, copies=?, pages=? WHERE id=?",
+      printer || null, copies, pages || null, job.id
+    );
 
-  // Sanitise path — use absolute, never shell-interpolated variable
-  const absPath = path.resolve(job.file_path);
-  exec(`lp ${flags} -- "${absPath}"`, (err, _out, stderr) => {
-    const status = err ? "failed" : "done";
-    db.prepare("UPDATE jobs SET status=? WHERE id=?").run(status, job.id);
-    if (err) console.error("lp error:", stderr);
-  });
+    const absPath = path.resolve(job.file_path);
+    exec(`lp ${flags} -- "${absPath}"`, (err, _out, stderr) => {
+      dbRun("UPDATE jobs SET status=? WHERE id=?", err ? "failed" : "done", job.id);
+      if (err) console.error("lp error:", stderr);
+    });
 
-  res.json({ message: "Printing started" });
+    res.json({ message: "Printing started" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── GET /file/:id ─────────────────────────────────────────────────────────────
-app.get("/file/:id", (req, res) => {
-  const job = getJob.get(req.params.id);
-  if (!job)                                      return res.sendStatus(404);
-  if (!job.file_path || !fs.existsSync(job.file_path))
-                                                 return res.status(410).send("File no longer available");
-  res.sendFile(path.resolve(job.file_path));
+app.get("/file/:id", async (req, res) => {
+  try {
+    const job = await dbGet("SELECT * FROM jobs WHERE id = ?", req.params.id);
+    if (!job)                                      return res.sendStatus(404);
+    if (!job.file_path || !fs.existsSync(job.file_path))
+                                                   return res.status(410).send("File no longer available");
+    res.sendFile(path.resolve(job.file_path));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── DELETE /job/:id ───────────────────────────────────────────────────────────
-app.delete("/job/:id", (req, res) => {
-  const job = getJob.get(req.params.id);
-  if (!job) return res.status(404).json({ error: "Job not found" });
-
-  if (job.file_path) {
-    try { fs.unlinkSync(job.file_path); } catch { /* file already gone */ }
+app.delete("/job/:id", async (req, res) => {
+  try {
+    const job = await dbGet("SELECT * FROM jobs WHERE id = ?", req.params.id);
+    if (!job) return res.status(404).json({ error: "Job not found" });
+    if (job.file_path) { try { fs.unlinkSync(job.file_path); } catch { /* gone */ } }
+    await dbRun("DELETE FROM jobs WHERE id=?", job.id);
+    res.json({ message: "Job deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  db.prepare("DELETE FROM jobs WHERE id=?").run(job.id);
-  res.json({ message: "Job deleted" });
 });
 
 // ── GET /printers ─────────────────────────────────────────────────────────────
@@ -296,20 +323,18 @@ app.use((err, _req, res, _next) => {
 function cleanup() {
   const now = Date.now();
 
-  // Delete uploaded files older than 30 min (keep DB record)
-  const toExpire = db.prepare(
-    "SELECT * FROM jobs WHERE file_path IS NOT NULL AND created_at < ?"
-  ).all(now - 30 * 60 * 1000);
+  dbAll("SELECT * FROM jobs WHERE file_path IS NOT NULL AND created_at < ?", now - 30 * 60 * 1000)
+    .then(toExpire => {
+      for (const job of toExpire) {
+        try { fs.unlinkSync(job.file_path); } catch { /* already gone */ }
+        dbRun("UPDATE jobs SET file_path=NULL WHERE id=?", job.id);
+      }
+    });
 
-  for (const job of toExpire) {
-    try { fs.unlinkSync(job.file_path); } catch { /* already gone */ }
-    db.prepare("UPDATE jobs SET file_path=NULL WHERE id=?").run(job.id);
-  }
-
-  // Purge completed/failed records older than 1 hour
-  db.prepare(
-    "DELETE FROM jobs WHERE status IN ('done','failed') AND created_at < ?"
-  ).run(now - 60 * 60 * 1000);
+  dbRun(
+    "DELETE FROM jobs WHERE status IN ('done','failed') AND created_at < ?",
+    now - 60 * 60 * 1000
+  );
 }
 
 setInterval(cleanup, 60_000);
@@ -743,7 +768,7 @@ EOF
 echo ""
 echo "=== Installing npm packages ==="
 chown -R "$REAL_USER:$REAL_USER" "$APP_DIR"
-sudo -u "$REAL_USER" bash -c "cd '$APP_DIR' && npm install express multer better-sqlite3"
+sudo -u "$REAL_USER" bash -c "cd '$APP_DIR' && npm install express multer sqlite"
 
 # ─── systemd service ──────────────────────────────────────────────────────────
 echo ""
