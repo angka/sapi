@@ -15,3 +15,6 @@ curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/webpri
 
 #instalasi proyek share op
 curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/shareop.sh | bash
+
+#install ollama qwen 3.5:4b
+curl -fsSL https://raw.githubusercontent.com/angka/sapi/refs/heads/master/ollama.sh | bash
